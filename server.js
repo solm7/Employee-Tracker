@@ -23,17 +23,17 @@ connection.connect((err) => {
     res.status(500);
     return res.send("There was an error connecting to the database.");
   }
-  console.log("You're connected!");
+  console.log("You are now connected");
 
-  // Function for inquirer to prompt data
-  runSearch();
+  // Function for inquirer to search data
+  searchDatabase();
 });
 
 // Function to provide prompts
 function searchDatabase() {
   inquirer
     .prompt({
-      name: "",
+      name: "enterprise",
       type: "list",
       message: "How do you want to proceed?",
       choices: [
@@ -49,48 +49,51 @@ function searchDatabase() {
       ],
     })
     .then((answers) => {
-      //switch statement for inquirer
-      switch (answers.action) {
-        //case
-        case "View all Employees":
-          searchEmployees();
+      // Switch statement
+      switch (answers.enterprise) {
+        // New case
+        case "View every employee":
+          byEmployees();
           searchDatabase();
 
           break;
-        //case
+        // New case
         case "View Departments":
-          searchDepartments();
+          byDepartment();
           searchDatabase();
-          break;
-        // case
-        case "View Roles":
-          searchRoles();
-          searchDatabase();
+
           break;
 
-        case "Hire Employee":
+        case "View all roles":
+          byRole();
+          searchDatabase();
+
+          break;
+
+        // New case
+        case "Add employee":
           inquirer
             .prompt([
               {
                 name: "employeeFirstName",
                 type: "input",
-                message: "Enter Employee's First Name.",
+                message: "Enter the employee's first name.",
                 validate: (answer) => {
                   if (answer !== "") {
                     return true;
                   }
-                  return "Please Enter Employee name.";
+                  return "Enter a character.";
                 },
               },
               {
                 name: "employeeLastName",
                 type: "input",
-                message: "Enter Employee's Last Name.",
+                message: "Enter the employee's last name",
                 validate: (answer) => {
                   if (answer !== "") {
                     return true;
                   }
-                  return "Please Enter Employee name.";
+                  return "Enter a character.";
                 },
               },
               {
@@ -100,43 +103,282 @@ function searchDatabase() {
               },
               {
                 name: "manager",
-                type: "Input",
-                message: "Please enter manager id",
+                type: "input",
+                message: "Enter Manager id",
               },
             ])
             .then((answers) => {
-              hireEmployee(
+              addEmployee(
                 answers.employeeFirstName,
-                answer.employeeLastName,
+                answers.employeeLastName,
                 answers.department,
                 answers.manager
               );
               searchDatabase();
             });
-          break;
 
-        //Case
+          break;
+        // New case
         case "Add Department":
           inquirer
             .prompt([
               {
                 name: "Department",
                 type: "input",
-                message: "Enter department Name.",
+                message: "Enter new Department name.",
                 validate: (answer) => {
                   if (answer !== "") {
                     return true;
                   }
-                  return "Enter department name.";
+                  return "Enter a character.";
                 },
               },
             ])
             .then((answers) => {
-              //Add Department to mysql2 Database
-              addDepartment(answers.departments);
+              // Add department to Database
+              addDepartment(answers.Department);
               searchDatabase();
             });
           break;
+        // New case
+        case "Add Role":
+          inquirer
+            .prompt([
+              {
+                name: "title",
+                type: "input",
+                message: "Please enter the role's title.",
+                validate: (answer) => {
+                  if (answer !== "") {
+                    return true;
+                  }
+                  return "Enter a character.";
+                },
+              },
+              {
+                name: "department_id",
+                type: "input",
+                message: "Enter the department id.",
+              },
+              {
+                name: "salary",
+                type: "input",
+                message: "Enter role's salary.",
+              },
+            ])
+            .then((answers) => {
+              // Adds role to database
+              addRole(answers.title, answers.salary, answers.department_id);
+              searchDatabase();
+            });
+          break;
+
+        // New case
+        case "Remove employee":
+          inquirer
+            .prompt([
+              {
+                name: "id",
+                type: "input",
+                message: "Enter the Employee id you'd like to remove.",
+              },
+            ])
+            .then((answers) => {
+              // Removes employee to database
+              removeEmployee(answers.id);
+              searchDatabase();
+            });
+          break;
+
+        // New case
+        case "Update employee role":
+          inquirer
+            .prompt([
+              {
+                name: "employeeId",
+                type: "input",
+                message: "Please enter employee's id you'd like to update.",
+              },
+              {
+                name: "roleId",
+                type: "input",
+                message: "Please enter role's id",
+              },
+            ])
+            .then((answers) => {
+              // Updates employee's role
+              updateByRole(answers.employeeId, answers.roleId);
+              searchDatabase();
+            });
+
+          break;
+        // Start new case
+        // Takes further input
+        case "Update employee manager":
+          inquirer
+            .prompt([
+              {
+                name: "manager",
+                type: "input",
+                message: "Enter the manager id",
+              },
+              {
+                name: "Employee",
+                type: "input",
+                message: "Enter the employee id",
+              },
+            ])
+            .then((answers) => {
+              // Updates employee's manager
+              updateByManager(answers.manager, answers.Employee);
+              searchDatabase();
+            });
+
+          break;
       }
     });
+}
+
+// "View all employees",
+function byEmployees() {
+  var results = connection.query(
+    "SELECT employees.id, employees.first_name, employees.last_name, roles.title, departments.d_name AS department, roles.salary, CONCAT(manager.first_name, ' ', manager.last_name) AS manager FROM employee LEFT JOIN role on employees.role_id = role.id LEFT JOIN department on roles.department_id = department.id LEFT JOIN employee manager on manager.id = employees.manager_id;",
+
+    function (error, results) {
+      if (error) throw error;
+      console.log("\n");
+      console.table(results);
+    }
+  );
+}
+
+// "View alL departments",
+function byDepartment() {
+  var department = connection.query(
+    "SELECT departments.id, departments.d_name FROM employee LEFT JOIN role on employees.role_id = roles.id LEFT JOIN department department on roles.department_id = departments.id WHERE departments.id;",
+
+    function (error, department) {
+      if (error) throw error;
+      console.log("\n");
+      console.table(department);
+    }
+  );
+}
+
+// "View all roles",
+function byRole() {
+  var manager = connection.query(
+    "SELECT employees.id, roles.title, departments.d_name AS department, roles.salary AS manager FROM employee LEFT JOIN role on employees.role_id = roles.id LEFT JOIN department on roles.department_id = departments.id LEFT JOIN employee manager on manager.id = employees.manager_id;",
+
+    function (error, manager) {
+      if (error) throw error;
+      console.log("\n");
+      console.table(manager);
+    }
+  );
+}
+
+// "Update employee manager"
+function updateByManager(managerId, employeeId) {
+  var updateManager = connection.query(
+    "UPDATE employee SET manager_id = ? WHERE id = ?",
+    [managerId, employeeId],
+    function (error, updateManager) {
+      if (error) throw error;
+      // console.table(manager)
+    }
+  );
+
+  byRole();
+}
+
+// "Add employee"
+function addEmployee(employeeFirstName, employeeLastName, department, manager) {
+  var add = connection.query(
+    "INSERT INTO employee SET first_name = ?, last_name = ?, role_id = ?, manager_id = ?",
+    [employeeFirstName, employeeLastName, department, manager],
+    function (error, add) {
+      if (error) throw error;
+    }
+  );
+
+  byEmployees();
+}
+
+// Shows departments only, without employees
+function departmentTable() {
+  var dTable = connection.query(
+    "SELECT d_name FROM department;",
+
+    function (error, dTable) {
+      if (error) throw error;
+      console.table(dTable);
+    }
+  );
+}
+
+// "Add Department"
+function addDepartment(department) {
+  var department = connection.query(
+    "INSERT INTO department SET d_name = ?",
+    [department],
+    function (error, department) {
+      if (error) throw error;
+      // console.table(manager)
+    }
+  );
+
+  departmentTable();
+}
+
+// Shows roles only, without employees:
+
+function roleTable() {
+  let roles = connection.query(
+    "SELECT title, salary, department_id FROM role;",
+
+    function (error, roles) {
+      if (error) throw error;
+      console.table(roleT);
+    }
+  );
+}
+// "Add role"
+function addRole(title, salary, department_id) {
+  var newRole = connection.query(
+    "INSERT INTO role SET title = ?, salary = ?, department_id = ?",
+    [title, salary, department_id],
+    function (error, newRole) {
+      if (error) throw error;
+      // console.table(manager)
+    }
+  );
+
+  roleTable();
+}
+
+// "Remove employee"
+function removeEmployee(id) {
+  var add = connection.query(
+    "DELETE FROM employee WHERE id = ?",
+    [id],
+    function (error, id) {
+      if (error) throw error;
+    }
+  );
+
+  byEmployees();
+}
+
+// "Update employee role",
+function updateByRole(employeeId, roleId) {
+  var role = connection.query(
+    "UPDATE employee SET role_id = ? WHERE id = ?",
+
+    [roleId, employeeId],
+    function (error, role) {
+      if (error) throw error;
+    }
+  );
+  byDepartment();
 }
