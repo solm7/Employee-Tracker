@@ -29,9 +29,7 @@ function searchDatabase() {
         "Hire Employee",
         "Add department",
         "Add Role",
-        "Fire Employee",
         "Update employee role",
-        "Update Employee Manager",
       ],
     })
     .then((answers) => {
@@ -176,15 +174,100 @@ function searchDatabase() {
                   });
               }
             });
-          // connection
-          //   .promise()
-          //   .execute(
-          //     'SELECT id AS "ID", title AS "Roles" FROM roles ORDER BY id;'
-          //   )
-          //   .then(([rows]) => {
-          //     console.table(rows);
-          //     searchDatabase();
-          //   });
+          break;
+
+        case "Add department":
+          inquirer
+            .prompt([
+              {
+                name: "Department",
+                type: "input",
+                message:
+                  "What is the name of the Department you'd like to add?",
+              },
+            ])
+            .then((answer) => {
+              connection
+                .promise()
+                .execute(
+                  "INSERT INTO departments (department_name) VALUES (" +
+                    "'" +
+                    answer.Department +
+                    "');"
+                )
+                .then(() => {
+                  console.log("Department added successfully");
+                  searchDatabase();
+                });
+            });
+
+          break;
+
+        case "Add Role":
+          let currentDepartments = [];
+          connection
+            .promise()
+            .query("SELECT department_name FROM departments ORDER BY id;")
+            .then(([rows]) => {
+              for (row of rows) {
+                currentDepartments.push(row.department_name);
+              }
+              inquirer
+                .prompt([
+                  {
+                    name: "Role",
+                    type: "input",
+                    message: "What is the name of the Role you'd like to add?",
+                  },
+                  {
+                    name: "Salary",
+                    type: "input",
+                    message:
+                      "What is the salary of the role you'd like to add?",
+                  },
+                  {
+                    name: "Role_department",
+                    type: "list",
+                    message:
+                      "What is the department for the role you'd like to add?",
+                    choices: currentDepartments,
+                  },
+                ])
+                .then((answer) => {
+                  let deptID;
+                  connection
+                    .promise()
+                    .query(
+                      "SELECT id FROM departments WHERE department_name = " +
+                        "'" +
+                        answer.Role_department +
+                        "';"
+                    )
+                    .then(([rows]) => {
+                      deptID = rows[0].id;
+
+                      connection
+                        .promise()
+                        .execute(
+                          "INSERT INTO roles (title, salary, department_id) VALUES (" +
+                            "'" +
+                            answer.Role +
+                            "', " +
+                            "'" +
+                            answer.Salary +
+                            "', " +
+                            "'" +
+                            deptID +
+                            "'" +
+                            ");"
+                        )
+                        .then(() => {
+                          console.log("Role added successfully");
+                          searchDatabase();
+                        });
+                    });
+                });
+            });
           break;
 
         default:
