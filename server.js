@@ -269,7 +269,85 @@ function searchDatabase() {
                 });
             });
           break;
-
+        case "Update employee role":
+          let currentEmployees = [];
+          let Roles = [];
+          let employeeID;
+          let role_id;
+          connection
+            .promise()
+            .query(
+              "SELECT CONCAT(first_name, ' ', last_name) AS 'Employee' FROM employees"
+            )
+            .then(([rows]) => {
+              for (row of rows) {
+                currentEmployees.push(row.Employee);
+              }
+              connection
+                .promise()
+                .query("SELECT title FROM roles")
+                .then(([rows]) => {
+                  for (row of rows) {
+                    Roles.push(row.title);
+                  }
+                  inquirer
+                    .prompt([
+                      {
+                        name: "updated_Employee",
+                        type: "list",
+                        message: "Which employee do you want to update?",
+                        choices: currentEmployees,
+                      },
+                      {
+                        name: "new_Role",
+                        type: "list",
+                        message: "What is the employees new role?",
+                        choices: Roles,
+                      },
+                    ])
+                    .then((answer) => {
+                      let employee = answer.updated_Employee.split(" ");
+                      connection
+                        .promise()
+                        .query(
+                          "SELECT id FROM employees WHERE first_name = " +
+                            "'" +
+                            employee[0] +
+                            "'" +
+                            "AND last_name = " +
+                            "'" +
+                            employee[1] +
+                            "';"
+                        )
+                        .then(([rows]) => {
+                          console.log(rows);
+                          employeeID = rows[0].id;
+                          connection
+                            .promise()
+                            .query(
+                              "SELECT id FROM roles WHERE title = " +
+                                "'" +
+                                answer.new_Role +
+                                "';"
+                            )
+                            .then(([rows]) => {
+                              role_id = rows[0].id;
+                              connection
+                                .promise()
+                                .execute(
+                                  "UPDATE employees SET role_id = " +
+                                    role_id +
+                                    " WHERE id = " +
+                                    employeeID +
+                                    ";"
+                                );
+                              console.log("updated role successfully");
+                              searchDatabase();
+                            });
+                        });
+                    });
+                });
+            });
         default:
           console.log("something went wrong");
       }
