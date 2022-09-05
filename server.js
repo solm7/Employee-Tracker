@@ -75,15 +75,116 @@ function searchDatabase() {
           break;
 
         case "Hire Employee":
+          let currentManagers = [];
+          let currentRoles = [];
           connection
             .promise()
-            .execute(
-              'SELECT id AS "ID", title AS "Roles" FROM roles ORDER BY id;'
+            .query(
+              'SELECT CONCAT(first_name, " ", last_name) AS "mgr" FROM employees ORDER BY id'
             )
             .then(([rows]) => {
-              console.table(rows);
-              searchDatabase();
+              for (row of rows) {
+                currentManagers.push(row.mgr);
+              }
+              currentManagers.push("none");
             });
+          connection
+            .promise()
+            .query("SELECT title FROM roles ORDER BY id")
+            .then(([rows]) => {
+              for (row of rows) {
+                currentRoles.push(row.title);
+              }
+            });
+          inquirer
+            .prompt([
+              {
+                name: "First_Name",
+                type: "input",
+                message: "What is the Employee's First Name?",
+              },
+              {
+                name: "Last_Name",
+                type: "input",
+                message: "What is the Employee's Last Name?",
+              },
+              {
+                name: "Role",
+                type: "list",
+                message: "Select the employee's role.",
+                choices: currentRoles,
+              },
+              {
+                name: "Manager",
+                type: "list",
+                message: "Select employee's manager.",
+                choices: currentManagers,
+              },
+            ])
+            .then((answers) => {
+              let role_id;
+              let manager = answers.Manager.split(" ");
+              let manager_id = "NULL";
+              if (!(answers.Manager === "none")) {
+                connection
+                  .promise()
+                  .query(
+                    "SELECT id FROM roles WHERE title = " +
+                      "'" +
+                      answers.Role +
+                      "'" +
+                      ";"
+                  )
+                  .then(([rows]) => {
+                    role_id = rows[0].id;
+
+                    connection
+                      .promise()
+                      .query(
+                        "SELECT id FROM employees WHERE first_name = " +
+                          "'" +
+                          manager[0] +
+                          "'" +
+                          "AND last_name = " +
+                          "'" +
+                          manager[1] +
+                          "';"
+                      )
+                      .then(([rows]) => {
+                        manager_id = rows[0].id;
+                        connection
+                          .promise()
+                          .execute(
+                            "INSERT INTO employees (first_name, last_name, role_id, manager_id) VALUES (" +
+                              "'" +
+                              answers.First_Name +
+                              "', " +
+                              "'" +
+                              answers.Last_Name +
+                              "', " +
+                              "'" +
+                              role_id +
+                              "', " +
+                              "'" +
+                              manager_id +
+                              "');"
+                          )
+                          .then(() => {
+                            searchDatabase();
+                          });
+                      });
+                  });
+              }
+            });
+          // connection
+          //   .promise()
+          //   .execute(
+          //     'SELECT id AS "ID", title AS "Roles" FROM roles ORDER BY id;'
+          //   )
+          //   .then(([rows]) => {
+          //     console.table(rows);
+          //     searchDatabase();
+          //   });
           break;
 
         default:
